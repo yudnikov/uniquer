@@ -21,6 +21,7 @@ import scala.util.{Failure, Success}
 object Service extends App {
 
   val appName = "unifier"
+  val port = args(0).toInt
 
   implicit val actorSystem: ActorSystem = ActorSystem(appName)
   implicit val materializer: ActorMaterializer = ActorMaterializer()
@@ -40,7 +41,7 @@ object Service extends App {
         val f = router ? Ask
         onComplete(f) {
           case Success(set: Set[String]) =>
-            complete(200 -> set.mkString(";"))
+            complete(200 -> set.mkString("\n"))
           case Failure(exception) =>
             complete(500 -> exception.getMessage)
         }
@@ -63,23 +64,10 @@ object Service extends App {
     }
   }
 
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+  val bindingFuture = Http().bindAndHandle(route, "localhost", port)
 
-  println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+  println(s"Server online at http://localhost:$port/\nPress RETURN to stop...")
   StdIn.readLine()
   bindingFuture.flatMap(_.unbind()).onComplete(_ => actorSystem.terminate())
-
-  /*val appName = "uniquer"
-  val actorSystem = ActorSystem(appName)
-  val router = actorSystem.actorOf(Props(classOf[Router], 1024))
-  val spammer = actorSystem.actorOf(Props(classOf[Spammer], router, 100000))
-  implicit val ec: ExecutionContext = actorSystem.dispatcher
-  actorSystem.scheduler.scheduleOnce(10.seconds, () => {
-    actorSystem.stop(spammer)
-  })
-  val r: Runnable = () => {
-    actorSystem.actorOf(Props(classOf[Spammer], router, 100))
-  }
-  actorSystem.scheduler.scheduleOnce(1.minutes, r)*/
 
 }
