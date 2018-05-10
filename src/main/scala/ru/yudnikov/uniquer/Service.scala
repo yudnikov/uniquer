@@ -25,6 +25,9 @@ object Service extends App {
   val appName = "unifier"
   val port = args(0).toInt
 
+  val dataDir = new File("data")
+  if (!dataDir.exists()) dataDir.mkdir()
+
   implicit val actorSystem: ActorSystem = ActorSystem(appName)
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = actorSystem.dispatcher

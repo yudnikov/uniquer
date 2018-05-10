@@ -18,12 +18,6 @@ case class Router(numberWorkers: Int) extends Actor {
     i -> context.actorOf(Props(classOf[Worker], i))
   }.toMap
 
-  override def preStart(): Unit = {
-    val dataDir = new File("data")
-    if (!dataDir.exists()) dataDir.mkdir()
-    super.preStart()
-  }
-
   override def receive: Receive = {
     case str: String =>
       workers(scala.math.abs(str.hashCode % numberWorkers)) ! str
