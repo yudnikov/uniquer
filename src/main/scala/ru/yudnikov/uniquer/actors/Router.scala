@@ -1,9 +1,11 @@
 package ru.yudnikov.uniquer.actors
 
+import java.io.File
+
 import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern._
 import akka.util.Timeout
-import ru.yudnikov.uniquer.actors.Router.Ask
+import ru.yudnikov.uniquer.actors.Router.{Stat, StatAsync}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -16,13 +18,19 @@ case class Router(numberWorkers: Int) extends Actor {
     i -> context.actorOf(Props(classOf[Worker], i))
   }.toMap
 
+  override def preStart(): Unit = {
+    val dataDir = new File("data")
+    if (!dataDir.exists()) dataDir.mkdir()
+    super.preStart()
+  }
+
   override def receive: Receive = {
     case str: String =>
       workers(scala.math.abs(str.hashCode % numberWorkers)) ! str
-    case Ask =>
+    case Stat =>
       val senderRef = sender()
       implicit val timeout: Timeout = 1.minute
-      Future.sequence(workers.values.map(_ ? Ask)).map {
+      Future.sequence(workers.values.map(_ ? Stat)).map {
         case sets: Iterable[Set[String]] =>
           sets.par.reduceLeft(_ ++ _)
       } onComplete {
@@ -31,11 +39,22 @@ case class Router(numberWorkers: Int) extends Actor {
         case Failure(exception) =>
           senderRef ! exception
       }
+    case StatAsync =>
+      val senderRef = sender()
+      implicit val timeout: Timeout = 1.minute
+      val futures = workers.values.map(_ ? Stat).asInstanceOf[Iterable[Future[Set[String]]]]
+      Future.reduceLeft(futures.toList) { (af, bf) =>
+        af | bf
+      } onComplete {
+        case Success(res) => senderRef ! res
+      }
   }
 }
 
 object Router {
 
-  case object Ask
+  case object Stat
+
+  case object StatAsync
 
 }

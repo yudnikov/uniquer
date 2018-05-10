@@ -1,5 +1,7 @@
 package ru.yudnikov.uniquer
 
+import java.io.File
+
 import akka.actor.{ActorSystem, Props}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -13,7 +15,7 @@ import akka.util.Timeout
 import org.json4s.jackson.Serialization
 import org.json4s.{DefaultFormats, Formats}
 import ru.yudnikov.uniquer.actors.Router
-import ru.yudnikov.uniquer.actors.Router.Ask
+import ru.yudnikov.uniquer.actors.Router.{Stat, StatAsync}
 
 import scala.io.StdIn
 import scala.util.{Failure, Success}
@@ -38,10 +40,10 @@ object Service extends App {
         complete("welcome!")
       } ~
       path("stat") {
-        val f = router ? Ask
+        val f = router ? StatAsync
         onComplete(f) {
           case Success(set: Set[String]) =>
-            complete(200 -> set.mkString("\n"))
+            complete(200 -> set.par.mkString("\n"))
           case Failure(exception) =>
             complete(500 -> exception.getMessage)
         }
